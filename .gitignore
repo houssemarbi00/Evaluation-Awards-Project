@@ -1,0 +1,59 @@
+# =========================
+# 🌐 FRONTEND (React)
+# =========================
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.cache/
+frontend/.vite/
+frontend/dist/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/package-lock.json
+frontend/.eslintcache
+
+# =========================
+# ⚙️ BACKEND (FastAPI / Python)
+# =========================
+backend/__pycache__/
+backend/*.py[cod]
+backend/.pytest_cache/
+backend/.env
+backend/.venv/
+backend/venv/
+backend/env/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.coverage
+backend/coverage.xml
+backend/htmlcov/
+
+# =========================
+# 🧱 General (System + IDE)
+# =========================
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+# Logs
+*.log
+# VS Code
+.vscode/
+# PyCharm / JetBrains
+.idea/
+# Virtual environments
+.venv/
+venv/
+env/
+# Cache or temporary files
+*.tmp
+*.swp
+*.bak
+*.old
+# Backup files
+*.orig
