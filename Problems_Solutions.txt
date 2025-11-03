@@ -1,0 +1,2 @@
+Git: supprimer git cmd powershell:
+# Remove-Item -Recurse -Force .git

@@ -1,0 +1,426 @@
+arobrescence:
+Back:
+database.py
+main.py
+models.py
+schemas.py
+/routers
+-auth.py
+-candisats.py
+-criteres.py
+-categories.py
+-scores.py
+-users.py
+/utils
+security.py
+
+les codes:
+database.py
+# backend/database.py
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+import os
+
+DATABASE_URL ="postgresql://postgres:ma9arouna@localhost:5432/postgres"
+
+engine = create_engine(DATABASE_URL, future=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# Dependency pour FastAPI
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+main.py
+# backend/main.py
+from fastapi import FastAPI
+from .database import engine
+from . import models
+from .routers import auth, users, candidats, categories, criteres, scores
+
+# Si tu veux créer les tables via SQLAlchemy (optionnel)
+# models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="API Evaluation - FastAPI")
+
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(candidats.router)
+app.include_router(categories.router)
+app.include_router(criteres.router)
+app.include_router(scores.router)
+
+models.py
+# backend/models.py
+from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, ForeignKey, Numeric, UniqueConstraint
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from .database import Base
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(200), nullable=False)
+    email = Column(String(200), unique=True, nullable=False, index=True)
+    mot_de_passe = Column(String(200), nullable=False)
+    role = Column(String(200), nullable=False)  # 'admin' or 'jury'
+    date_creation = Column(TIMESTAMP, server_default=func.now())
+
+class Candidat(Base):
+    __tablename__ = "candidats"
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(200), nullable=False)
+    prenom = Column(String(200), nullable=False)
+    email = Column(String(200), unique=True, nullable=False)
+    projet = Column(Text)
+    entreprise = Column(Text)
+    date_creation = Column(TIMESTAMP, server_default=func.now())
+
+class Category(Base):
+    __tablename__ = "categories"
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(200), unique=True, nullable=False)
+    description = Column(Text)
+
+class CategoryJury(Base):
+    __tablename__ = "category_jury"
+    jury_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    categorie_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True)
+
+class CandidateCategory(Base):
+    __tablename__ = "candidate_category"
+    candidat_id = Column(Integer, ForeignKey("candidats.id", ondelete="CASCADE"), primary_key=True)
+    categorie_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True)
+
+class Critere(Base):
+    __tablename__ = "criteres"
+    id = Column(Integer, primary_key=True, index=True)
+    categorie_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False)
+    nom = Column(String(200), nullable=False)
+    valeur_max = Column(Integer, nullable=False)
+
+class CriteriaScore(Base):
+    __tablename__ = "criteria_scores"
+    id = Column(Integer, primary_key=True, index=True)
+    candidat_id = Column(Integer, ForeignKey("candidats.id", ondelete="CASCADE"), nullable=False)
+    jury_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    categorie_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False)
+    critere_id = Column(Integer, ForeignKey("criteres.id", ondelete="CASCADE"), nullable=False)
+    note = Column(Numeric, nullable=False)
+    commentaire = Column(Text)
+    date_creation = Column(TIMESTAMP, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('candidat_id', 'jury_id', 'critere_id', name='uq_candidat_jury_critere'),
+    )
+
+class JuryScore(Base):
+    __tablename__ = "jury_scores"
+    id = Column(Integer, primary_key=True, index=True)
+    candidat_id = Column(Integer, ForeignKey("candidats.id", ondelete="CASCADE"), nullable=False)
+    jury_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    categorie_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False)
+    note_totale = Column(Numeric, nullable=False)
+    date_creation = Column(TIMESTAMP, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('candidat_id', 'jury_id', 'categorie_id', name='uq_candidat_jury_categorie'),
+    )
+
+class FinalScore(Base):
+    __tablename__ = "final_scores"
+    id = Column(Integer, primary_key=True, index=True)
+    candidat_id = Column(Integer, ForeignKey("candidats.id", ondelete="CASCADE"), nullable=False)
+    categorie_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False)
+    note_finale = Column(Numeric, nullable=False)
+    nb_jurys = Column(Integer, nullable=False)
+    date_modification = Column(TIMESTAMP, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('candidat_id', 'categorie_id', name='uq_candidat_categorie_final'),
+    )
+/routers
+-auth.py
+# backend/routers/auth.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from .. import schemas, models
+from Back.utils import security
+from ..database import get_db
+from fastapi.security import OAuth2PasswordRequestForm
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+@router.post("/login", response_model=schemas.Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    if not user or not security.verify_password(form_data.password, user.mot_de_passe):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Identifiants invalides")
+    token = security.create_access_token({"user_id": user.id, "role": user.role})
+    return {"access_token": token, "token_type": "bearer"}
+
+-candisats.py
+# backend/routers/candidats.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from .. import schemas, models
+from ..database import get_db
+
+router = APIRouter(prefix="/candidats", tags=["candidats"])
+
+@router.post("/", response_model=schemas.CandidatOut)
+def create_candidat(payload: schemas.CandidatCreate, db: Session = Depends(get_db)):
+    exists = db.query(models.Candidat).filter(models.Candidat.email == payload.email).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="Email candidat déjà existant")
+    c = models.Candidat(**payload.dict())
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    # 🩵 Conversion manuelle avant le retour
+    c.date_creation = c.date_creation.isoformat()
+    return c
+
+@router.get("/", response_model=list[schemas.CandidatOut])
+def list_candidats(db: Session = Depends(get_db)):
+    candidat= db.query(models.Candidat).all()
+    for c in candidat:
+        c.date_creation = c.date_creation.isoformat()
+    return candidat
+    
+
+@router.get("/{candidat_id}", response_model=schemas.CandidatOut)
+def get_candidat(candidat_id: int, db: Session = Depends(get_db)):
+    candidat= db.query(models.Candidat).get(candidat_id)
+     
+    
+    if not candidat:
+        raise HTTPException(status_code=404, detail="Candidat introuvable")
+    # ✅ convertir date_creation en string ISO (si besoin)
+    if hasattr(candidat, "date_creation") and isinstance(candidat.date_creation, (str, bytes)) is False:
+        candidat.date_creation = candidat.date_creation.isoformat()
+    return candidat
+-criteres.py
+# backend/routers/criteres.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from .. import schemas, models
+from ..database import get_db
+
+router = APIRouter(prefix="/criteres", tags=["criteres"])
+
+@router.post("/", response_model=schemas.CritereOut)
+def create_critere(payload: schemas.CritereCreate, db: Session = Depends(get_db)):
+    # vérifier catégorie existe
+    cat = db.query(models.Category).get(payload.categorie_id)
+    if not cat:
+        raise HTTPException(status_code=404, detail="Catégorie introuvable")
+    crit = models.Critere(**payload.dict())
+    db.add(crit)
+    db.commit()
+    db.refresh(crit)
+    return crit
+
+@router.get("/by_category/{categorie_id}", response_model=list[schemas.CritereOut])
+def crits_by_cat(categorie_id: int, db: Session = Depends(get_db)):
+    return db.query(models.Critere).filter(models.Critere.categorie_id == categorie_id).all()
+
+-categories.py
+# backend/routers/categories.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from .. import schemas, models
+from ..database import get_db
+
+router = APIRouter(prefix="/categories", tags=["categories"])
+
+@router.post("/", response_model=schemas.CategoryOut)
+def create_category(payload: schemas.CategoryCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.Category).filter(models.Category.nom == payload.nom).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Catégorie existante")
+    c = models.Category(**payload.dict())
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    return c
+
+@router.get("/", response_model=list[schemas.CategoryOut])
+def list_categories(db: Session = Depends(get_db)):
+    return db.query(models.Category).all()
+
+@router.post("/{categorie_id}/add_candidat/{candidat_id}")
+def add_candidat_to_categorie(
+    categorie_id: int,
+    candidat_id: int,
+    db: Session = Depends(get_db)
+):
+    # Vérifier si la catégorie existe
+    categorie = db.query(models.Category).filter(models.Category.id == categorie_id).first()
+    if not categorie:
+        raise HTTPException(status_code=404, detail="Catégorie introuvable")
+
+    # Vérifier si le candidat existe
+    candidat = db.query(models.Candidat).filter(models.Candidat.id == candidat_id).first()
+    if not candidat:
+        raise HTTPException(status_code=404, detail="Candidat introuvable")
+
+    # Vérifier si déjà inscrit
+    check = db.query(models.CandidateCategory).filter_by(
+        candidat_id=candidat_id,
+        categorie_id=categorie_id
+    ).first()
+
+    if check:
+        raise HTTPException(status_code=409, detail="Déjà inscrit dans cette catégorie")
+
+    # Ajouter dans la relation many-to-many
+    link = models.CandidateCategory(
+        candidat_id=candidat_id,
+        categorie_id=categorie_id
+    )
+    db.add(link)
+    db.commit()
+
+    return {"message": "Candidat ajouté à la catégorie avec succès!"}
+
+@router.post("/{categorie_id}/add_jury/{jury_id}")
+def add_jury_to_categorie(
+    categorie_id: int,
+    jury_id: int,
+    db: Session = Depends(get_db)
+):
+    # Vérifier que l'utilisateur existe et est jury
+    jury = db.query(models.User).filter(models.User.id == jury_id).first()
+    if not jury:
+        raise HTTPException(status_code=404, detail="Jury introuvable")
+    if jury.role != "jury":
+        raise HTTPException(status_code=400, detail="Cet utilisateur n'est pas un jury")
+
+    # Vérifier que la catégorie existe
+    categorie = db.query(models.Category).filter(models.Category.id == categorie_id).first()
+    if not categorie:
+        raise HTTPException(status_code=404, detail="Catégorie introuvable")
+
+    # Vérifier si déjà assigné
+    check = db.query(models.CategoryJury).filter_by(
+        jury_id=jury_id,
+        categorie_id=categorie_id
+    ).first()
+    if check:
+        raise HTTPException(status_code=409, detail="Jury déjà assigné à cette catégorie")
+
+    # Ajout
+    link = models.CategoryJury(
+        jury_id=jury_id,
+        categorie_id=categorie_id
+    )
+    db.add(link)
+    db.commit()
+
+    return {"message": "Jury ajouté à la catégorie avec succès ✅"}
+
+
+-scores.py
+# backend/routers/scores.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from .. import schemas, models
+from ..database import get_db
+from sqlalchemy import func
+
+router = APIRouter(prefix="/scores", tags=["scores"])
+
+@router.post("/criteria-score")
+def add_criteria_score(request: schemas.CriteriaScoreCreate, 
+                       db: Session = Depends(get_db)):
+
+    existing_score = db.query(models.CriteriaScore).filter(
+        models.CriteriaScore.candidat_id == request.candidat_id,
+        models.CriteriaScore.critere_id == request.critere_id,
+        models.CriteriaScore.jury_id == request.jury_id
+    ).first()
+
+    if existing_score:
+        existing_score.note = request.note
+        existing_score.commentaire = request.commentaire
+        db.commit()
+        db.refresh(existing_score)
+        return {"message": "Score updated", "score": existing_score}
+
+    new_score = models.CriteriaScore(
+        candidat_id=request.candidat_id,
+        jury_id=request.jury_id,
+        categorie_id=request.categorie_id,
+        critere_id=request.critere_id,
+        note=request.note,
+        commentaire=request.commentaire
+    )
+
+    db.add(new_score)
+    db.commit()
+    db.refresh(new_score)
+
+    return {"message": "Score created", "score": new_score}
+
+-users.py
+# backend/routers/users.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from .. import schemas, models
+from Back.utils import security
+from ..database import get_db
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+@router.post("/", response_model=schemas.UserOut)
+def create_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(models.User.email == user_in.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email déjà utilisé")
+    hashed = security.hash_password(user_in.mot_de_passe)
+    user = models.User(nom=user_in.nom, email=user_in.email, mot_de_passe=hashed, role=user_in.role)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.get("/", response_model=list[schemas.UserOut])
+def list_users(db: Session = Depends(get_db)):
+    return db.query(models.User).all()
+/utils
+security.py
+# backend/security.py
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from typing import Optional
+import os
+
+PWD_CTX = CryptContext(schemes=["argon2"], deprecated="auto")
+
+SECRET_KEY = "testsecret"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24h by default
+
+def hash_password(password: str) -> str:
+    return PWD_CTX.hash(password)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return PWD_CTX.verify(plain, hashed)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def decode_access_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
