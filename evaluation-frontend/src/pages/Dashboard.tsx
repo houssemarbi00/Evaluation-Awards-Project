@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CircularProgress} from "@mui/material";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../api/apiClient";
@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import GroupIcon from "@mui/icons-material/Group";
 import CategoryIcon from "@mui/icons-material/Category";
-import BarChartIcon from "@mui/icons-material/BarChart";
 import Grid from "@mui/material/Grid"
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -21,30 +20,32 @@ export default function Dashboard() {
     categories: 0,
     candidats: 0,
     jurys: 0,
-    moyenneGlobale: 0,
+    // moyenneGlobale: 0,
   });
   const [loading, setLoading] = useState(true);
   useEffect(() => {
   console.log("USER FROM CONTEXT:", user);
 }, [user]);
   useEffect(() => {
+    
     const loadStats = async () => {
-      const [catRes, candRes, userRes, finalRes] = await Promise.all([
+      // ligne avant modification [catRes, candRes, userRes, finalRes ]
+      const [catRes, candRes, userRes] = await Promise.all([ 
         api.get("/categories/"),
         api.get("/candidats/"),
         api.get("/users/"),
-        api.get("/final_scores/{categorie_id}").catch(() => ({ data: [] })),
+        // api.get("/final_scores/{categorie_id}").catch(() => ({ data: [] })),
       ]);
-      const allScores = finalRes.data?.map((s: any) => s.note_finale) || [];
-      const moyenneGlobale =
-        allScores.length > 0
-          ? allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length
-          : 0;
+      // const allScores = finalRes.data?.map((s: any) => s.note_finale) || [];
+      // const moyenneGlobale =
+      //   allScores.length > 0
+      //     ? allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length
+      //     : 0;
       setStats({
         categories: catRes.data.length,
         candidats: candRes.data.length,
         jurys: userRes.data.filter((u: any) => u.role === "jury").length,
-        moyenneGlobale,
+        // moyenneGlobale,
       });
       setLoading(false);
     };
@@ -93,17 +94,17 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid >
+          {/* <Grid >
             <Card>
               <CardContent>
                 <BarChartIcon color="primary" />
                 <Typography variant="h6">Moyenne Globale</Typography>
                 <Typography variant="h4">
                   {stats.moyenneGlobale.toFixed(2)}
-                </Typography>
+                </Typography> 
               </CardContent>
             </Card>
-          </Grid>
+          </Grid> */}
         </Grid>
 
         <Button
