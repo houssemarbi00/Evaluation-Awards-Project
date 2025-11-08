@@ -26,6 +26,8 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     user_id: Optional[int] = None
     role: Optional[str] = None
+    nom: Optional[str] = None
+    email: Optional[str] = None
 
 # --- Candidat ---
 class CandidatBase(BaseModel):

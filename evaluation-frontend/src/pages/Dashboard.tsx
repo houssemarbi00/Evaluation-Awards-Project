@@ -24,14 +24,16 @@ export default function Dashboard() {
     moyenneGlobale: 0,
   });
   const [loading, setLoading] = useState(true);
-
+  useEffect(() => {
+  console.log("USER FROM CONTEXT:", user);
+}, [user]);
   useEffect(() => {
     const loadStats = async () => {
       const [catRes, candRes, userRes, finalRes] = await Promise.all([
         api.get("/categories/"),
         api.get("/candidats/"),
         api.get("/users/"),
-        api.get("/final_scores/by_category/1").catch(() => ({ data: [] })),
+        api.get("/final_scores/{categorie_id}").catch(() => ({ data: [] })),
       ]);
       const allScores = finalRes.data?.map((s: any) => s.note_finale) || [];
       const moyenneGlobale =
