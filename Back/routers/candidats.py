@@ -1,5 +1,5 @@
 # backend/routers/candidats.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException , status
 from sqlalchemy.orm import Session
 from .. import schemas, models
 from ..database import get_db
@@ -38,3 +38,18 @@ def get_candidat(candidat_id: int, db: Session = Depends(get_db)):
     if hasattr(candidat, "date_creation") and isinstance(candidat.date_creation, (str, bytes)) is False:
         candidat.date_creation = candidat.date_creation.isoformat()
     return candidat
+
+# --- Suppression d'un candidat ---
+@router.delete("/{candidat_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_candidat(candidat_id: int, db: Session = Depends(get_db)):
+    candidat = db.query(models.Candidat).filter(models.Candidat.id == candidat_id).first()
+
+    if not candidat:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Candidat avec ID {candidat_id} introuvable"
+        )
+
+    db.delete(candidat)
+    db.commit()
+    return {"message": "Candidat supprimé avec succès"}

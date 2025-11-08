@@ -15,7 +15,13 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  TextField,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogActions,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 export default function CategoryPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -31,28 +37,33 @@ export default function CategoryPage() {
     severity: "success",
   });
 
+  const [newCat, setNewCat] = useState({ nom: "", description: "" });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [toDelete, setToDelete] = useState<{ type: "candidat" | "jury"; catId: number; id: number } | null>(null);
+
   const showMessage = (message: string, severity: "success" | "error" = "success") => {
     setSnackbar({ open: true, message, severity });
   };
 
+  const fetchAll = async () => {
+    try {
+      const [catRes, candRes, userRes] = await Promise.all([
+        api.get("/categories/"),
+        api.get("/candidats/"),
+        api.get("/users/"),
+      ]);
+      setCategories(catRes.data);
+      setCandidats(candRes.data);
+      setJurys(userRes.data.filter((u: any) => u.role === "jury"));
+      for (const cat of catRes.data) await fetchAssignations(cat.id);
+    } catch {
+      showMessage("Erreur de chargement des données", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [catRes, candRes, userRes] = await Promise.all([
-          api.get("/categories/"),
-          api.get("/candidats/"),
-          api.get("/users/"),
-        ]);
-        setCategories(catRes.data);
-        setCandidats(candRes.data);
-        setJurys(userRes.data.filter((u: any) => u.role === "jury"));
-        for (const cat of catRes.data) await fetchAssignations(cat.id);
-      } catch {
-        showMessage("Erreur de chargement des données", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAll();
   }, []);
 
@@ -91,6 +102,40 @@ export default function CategoryPage() {
     }
   };
 
+  // 🆕 Ajout catégorie
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCat.nom.trim()) return showMessage("Le nom est obligatoire", "error");
+    try {
+      await api.post("/categories/", newCat);
+      showMessage("Catégorie ajoutée avec succès 🎉");
+      setNewCat({ nom: "", description: "" });
+      await fetchAll();
+    } catch {
+      showMessage("Erreur lors de l’ajout de la catégorie", "error");
+    }
+  };
+
+  // 🗑️ Suppression candidat/jury
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    const { type, catId, id } = toDelete;
+    try {
+      if (type === "candidat") {
+        await api.delete(`/categories/${catId}/remove_candidat/${id}`);
+      } else {
+        await api.delete(`/categories/${catId}/remove_jury/${id}`);
+      }
+      showMessage("Suppression effectuée ✅");
+      await fetchAssignations(catId);
+    } catch {
+      showMessage("Erreur lors de la suppression", "error");
+    } finally {
+      setConfirmOpen(false);
+      setToDelete(null);
+    }
+  };
+
   if (loading)
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
@@ -104,6 +149,39 @@ export default function CategoryPage() {
         Gestion des Catégories
       </Typography>
 
+      {/* 🆕 Ajout de catégorie */}
+      <Paper sx={{ p: 3, mb: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Ajouter une nouvelle catégorie
+        </Typography>
+        <Box
+          component="form"
+          onSubmit={handleAddCategory}
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 2,
+            mb: 2,
+          }}
+        >
+          <TextField
+            label="Nom de la catégorie"
+            value={newCat.nom}
+            onChange={(e) => setNewCat({ ...newCat, nom: e.target.value })}
+            required
+          />
+          <TextField
+            label="Description"
+            value={newCat.description}
+            onChange={(e) => setNewCat({ ...newCat, description: e.target.value })}
+          />
+          <Button type="submit" variant="contained" color="primary" sx={{ gridColumn: "1 / -1" }}>
+            Ajouter
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Sélection global candidat/jury */}
       <Paper sx={{ p: 2, mb: 4 }}>
         <Box display="flex" gap={3}>
           <Box>
@@ -142,6 +220,7 @@ export default function CategoryPage() {
         </Box>
       </Paper>
 
+      {/* Liste catégories */}
       {categories.map((cat) => (
         <Paper key={cat.id} sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6">{cat.nom}</Typography>
@@ -155,6 +234,7 @@ export default function CategoryPage() {
               <TableRow>
                 <TableCell>Nom</TableCell>
                 <TableCell>Email</TableCell>
+                <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -163,11 +243,22 @@ export default function CategoryPage() {
                   <TableRow key={c.id}>
                     <TableCell>{c.prenom} {c.nom}</TableCell>
                     <TableCell>{c.email}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        color="error"
+                        onClick={() => {
+                          setToDelete({ type: "candidat", catId: cat.id, id: c.id });
+                          setConfirmOpen(true);
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={2}>Aucun candidat</TableCell>
+                  <TableCell colSpan={3}>Aucun candidat</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -175,17 +266,35 @@ export default function CategoryPage() {
 
           <Typography variant="subtitle1">Jurys :</Typography>
           <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Nom</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell align="center">Actions</TableCell>
+              </TableRow>
+            </TableHead>
             <TableBody>
               {assignations[cat.id]?.jurys?.length ? (
                 assignations[cat.id].jurys.map((j) => (
                   <TableRow key={j.id}>
                     <TableCell>{j.nom}</TableCell>
                     <TableCell>{j.email}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        color="error"
+                        onClick={() => {
+                          setToDelete({ type: "jury", catId: cat.id, id: j.id });
+                          setConfirmOpen(true);
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={2}>Aucun jury</TableCell>
+                  <TableCell colSpan={3}>Aucun jury</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -202,6 +311,18 @@ export default function CategoryPage() {
         </Paper>
       ))}
 
+      {/* 🔒 Dialog confirmation suppression */}
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>Confirmer la suppression ?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)}>Annuler</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">
+            Supprimer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
@@ -212,6 +333,10 @@ export default function CategoryPage() {
     </Box>
   );
 }
+
+
+
+
 // import React, { useEffect, useState } from "react";
 // import api from "../api/apiClient";
 

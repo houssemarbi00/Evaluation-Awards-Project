@@ -1,5 +1,5 @@
 # backend/routers/categories.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException ,status
 from sqlalchemy.orm import Session
 from .. import schemas, models
 from ..database import get_db
@@ -130,7 +130,7 @@ def get_jurys_in_categorie(categorie_id: int, db: Session = Depends(get_db)):
                 "role": j.role
             })
     return jurys
-from fastapi import status
+
 
 @router.delete("/{categorie_id}/remove_candidat/{candidat_id}", status_code=status.HTTP_200_OK)
 def remove_candidat_from_categorie(
