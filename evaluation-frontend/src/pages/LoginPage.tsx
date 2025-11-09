@@ -28,7 +28,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await loginApi(email, password);
-      login(data.access_token);
+      await login(data.access_token);
       nav("/dashboard");
     } catch (error: any) {
       setErr(error?.response?.data?.detail || "Erreur d'authentification");
