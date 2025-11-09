@@ -164,3 +164,18 @@ def remove_jury_from_categorie(
     db.delete(link)
     db.commit()
     return {"message": "Jury retiré avec succès ✅"}
+
+    # --- Suppression d'un categorie ---
+@router.delete("/{categorie_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_categorie(categorie_id: int, db: Session = Depends(get_db)):
+    categorie = db.query(models.Category).filter(models.Category.id == categorie_id).first()
+
+    if not categorie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Candidat avec ID {categorie_id} introuvable"
+        )
+
+    db.delete(categorie)
+    db.commit()
+    return {"message": "Candidat supprimé avec succès"}

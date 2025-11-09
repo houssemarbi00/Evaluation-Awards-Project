@@ -89,7 +89,7 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <AssessmentIcon color="primary" />
-                <Typography variant="h6">Jurys</Typography>
+                <Typography variant="h6">  Jurys </Typography>
                 <Typography variant="h4">{stats.jurys}</Typography>
               </CardContent>
             </Card>
