@@ -127,6 +127,14 @@ export default function Dashboard() {
             >
               Scores finaux
             </Button>
+            <Button
+  variant="contained"
+  color="info"
+  onClick={() => navigate("/users")}
+>
+  Gérer les Utilisateurs
+</Button>
+
           </Stack>
         </Paper>
       </Box>

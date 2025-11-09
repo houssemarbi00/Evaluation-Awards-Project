@@ -9,6 +9,8 @@ import FinalScoresPage from "./pages/FinalScoresPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CategoryPage from "./pages/CategoryPage";
 import PageLayout from "./components/PageLayout";
+import UsersPage from "./pages/UsersPage";
+
 
 function App() {
   return (
@@ -29,6 +31,11 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+  path="/users"
+  element={<ProtectedRoute role="admin"><UsersPage /></ProtectedRoute>}
+/>
+
 
           <Route
             path="/candidats"
