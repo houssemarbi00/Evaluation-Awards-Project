@@ -1,16 +1,22 @@
 import { useEffect, useState } from "react";
-import { CircularProgress} from "@mui/material";
+import {
+  CircularProgress,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Box,
+  Paper,
+  Stack,
+} from "@mui/material";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../api/apiClient";
 import { useNavigate } from "react-router-dom";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import GroupIcon from "@mui/icons-material/Group";
 import CategoryIcon from "@mui/icons-material/Category";
-import Grid from "@mui/material/Grid"
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -20,32 +26,25 @@ export default function Dashboard() {
     categories: 0,
     candidats: 0,
     jurys: 0,
-    // moyenneGlobale: 0,
   });
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-  console.log("USER FROM CONTEXT:", user);
-}, [user]);
+    console.log("USER FROM CONTEXT:", user);
+  }, [user]);
+
   useEffect(() => {
-    
     const loadStats = async () => {
-      // ligne avant modification [catRes, candRes, userRes, finalRes ]
-      const [catRes, candRes, userRes] = await Promise.all([ 
+      const [catRes, candRes, userRes] = await Promise.all([
         api.get("/categories/"),
         api.get("/candidats/"),
         api.get("/users/"),
-        // api.get("/final_scores/{categorie_id}").catch(() => ({ data: [] })),
       ]);
-      // const allScores = finalRes.data?.map((s: any) => s.note_finale) || [];
-      // const moyenneGlobale =
-      //   allScores.length > 0
-      //     ? allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length
-      //     : 0;
+
       setStats({
         categories: catRes.data.length,
         candidats: candRes.data.length,
         jurys: userRes.data.filter((u: any) => u.role === "jury").length,
-        // moyenneGlobale,
       });
       setLoading(false);
     };
@@ -54,20 +53,22 @@ export default function Dashboard() {
 
   if (loading)
     return (
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 50 }}>
+      <Box display="flex" justifyContent="center" mt={6}>
         <CircularProgress />
-      </div>
+      </Box>
     );
 
+  // ✅ Interface Admin
   if (user?.role === "admin") {
     return (
-      <div style={{ padding: 24 }}>
+      <Box p={4}>
         <Typography variant="h4" gutterBottom>
           Tableau de bord - Administrateur
         </Typography>
 
+        {/* Cartes de statistiques */}
         <Grid container spacing={3}>
-          <Grid >
+          <Grid>
             <Card>
               <CardContent>
                 <CategoryIcon color="primary" />
@@ -76,7 +77,8 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid  >
+
+          <Grid>
             <Card>
               <CardContent>
                 <GroupIcon color="primary" />
@@ -85,42 +87,55 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid >
+
+          <Grid>
             <Card>
               <CardContent>
                 <AssessmentIcon color="primary" />
-                <Typography variant="h6">  Jurys </Typography>
+                <Typography variant="h6">Jurys</Typography>
                 <Typography variant="h4">{stats.jurys}</Typography>
               </CardContent>
             </Card>
           </Grid>
-          {/* <Grid >
-            <Card>
-              <CardContent>
-                <BarChartIcon color="primary" />
-                <Typography variant="h6">Moyenne Globale</Typography>
-                <Typography variant="h4">
-                  {stats.moyenneGlobale.toFixed(2)}
-                </Typography> 
-              </CardContent>
-            </Card>
-          </Grid> */}
         </Grid>
 
-        <Button
-          variant="contained"
-          color="primary"
-          sx={{ mt: 4 }}
-          onClick={() => navigate("/final-scores")}
-        >
-          Voir les résultats finaux
-        </Button>
-      </div>
+        {/* 🚀 Menu de navigation pour Admin */}
+        <Paper sx={{ p: 3, mt: 5 }}>
+          <Typography variant="h6" gutterBottom>
+            Accès rapide
+          </Typography>
+          <Stack direction="row" spacing={2} flexWrap="wrap">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => navigate("/candidats")}
+            >
+              Gérer les Candidats
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={() => navigate("/categories")}
+            >
+              Gérer les Catégories
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => navigate("/final-scores")}
+              startIcon={<EmojiEventsIcon />}
+            >
+              Scores finaux
+            </Button>
+          </Stack>
+        </Paper>
+      </Box>
     );
   }
 
+  // 👇 Interface Jury
   return (
-    <div style={{ padding: 24 }}>
+    <Box p={4}>
       <Typography variant="h4" gutterBottom>
         Bienvenue, {user?.nom || "Jury"}
       </Typography>
@@ -150,9 +165,10 @@ export default function Dashboard() {
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </Box>
   );
 }
+
 
 // import React, { useEffect, useState } from "react";
 // import api from "../api/apiClient";
