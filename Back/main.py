@@ -1,8 +1,8 @@
 # backend/main.py
 from fastapi import FastAPI
-from .database import engine
-from . import models
-from .routers import auth, users, candidats, categories, criteres, scores
+from database import engine
+import models
+from routers import auth, users, candidats, categories, criteres, scores
 from fastapi.middleware.cors import CORSMiddleware
 
 

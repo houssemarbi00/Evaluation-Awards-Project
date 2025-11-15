@@ -1,9 +1,9 @@
-# backend/routers/users.py
+# Back/routers/users.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from .. import schemas, models
-from Back.utils import security
-from ..database import get_db
+import schemas, models
+from utils import security
+from database import get_db
 # from ..routers.auth import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -28,3 +28,18 @@ def list_users(db: Session = Depends(get_db)):
 # def get_me(current_user: schemas.UserOut = Depends(get_current_user), db: Session = Depends(get_db)):
 #     user = db.query(models.User).filter(models.User.id == current_user.id).first()
 #     return user
+
+# --- Suppression d'un user ---
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_candidat(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User avec ID {user_id} introuvable"
+        )
+
+    db.delete(user)
+    db.commit()
+    return {"message": "User supprimé avec succès"}

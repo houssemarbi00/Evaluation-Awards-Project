@@ -4,6 +4,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import CandidatsPage from "./pages/CandidatsPage";
+import CriteresPage from "./pages/CriteresPage";
 import ScoreEntryPage from "./pages/ScoreEntryPage";
 import FinalScoresPage from "./pages/FinalScoresPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -80,6 +81,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/criteres" element={<ProtectedRoute role="admin"><PageLayout title="Criteres"><CriteresPage/></PageLayout></ProtectedRoute>} />
+
 
           {/* Redirection par défaut */}
           <Route path="*" element={<LoginPage />} />

@@ -130,10 +130,11 @@ export default function Dashboard() {
             <Button
   variant="contained"
   color="info"
-  onClick={() => navigate("/users")}
->
+  onClick={() => navigate("/users")}>
   Gérer les Utilisateurs
 </Button>
+<Button variant="contained" onClick={() => navigate("/criteres")}>Gérer les critères</Button>
+
 
           </Stack>
         </Paper>

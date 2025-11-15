@@ -1,8 +1,8 @@
 # backend/routers/categories.py
 from fastapi import APIRouter, Depends, HTTPException ,status
 from sqlalchemy.orm import Session
-from .. import schemas, models
-from ..database import get_db
+import schemas, models
+from database import get_db
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -179,3 +179,24 @@ def delete_categorie(categorie_id: int, db: Session = Depends(get_db)):
     db.delete(categorie)
     db.commit()
     return {"message": "Candidat supprimé avec succès"}
+
+@router.get("/jury/{jury_id}", response_model=list[schemas.CategoryOut])
+def get_categories_for_jury(jury_id: int, db: Session = Depends(get_db)):
+
+    # Vérifier que le jury existe
+    jury = db.query(models.User).filter(models.User.id == jury_id).first()
+    if not jury:
+        raise HTTPException(status_code=404, detail="Jury introuvable")
+
+    # Récupérer les liens (table associative)
+    links = db.query(models.CategoryJury).filter(
+        models.CategoryJury.jury_id == jury_id
+    ).all()
+
+    categorie_ids = [l.categorie_id for l in links]
+
+    # Retourner les catégories liées au jury
+    return db.query(models.Category).filter(
+        models.Category.id.in_(categorie_ids)
+    ).all()
+

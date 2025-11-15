@@ -1,10 +1,9 @@
 # backend/routers/scores.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from .. import schemas, models
-from ..database import get_db
-from sqlalchemy import func
-from .. import models, database
+import schemas, models
+from database import get_db
+import models, database
 
 
 
