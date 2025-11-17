@@ -76,7 +76,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('/iceberg-logo.png');
+  background-image: url('/tda.jpeg');
   background-repeat: repeat;
   background-size: 150px;
   opacity: 0.1; /* seulement le background est transparent */

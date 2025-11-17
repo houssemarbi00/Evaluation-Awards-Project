@@ -33,11 +33,14 @@ function App() {
             }
           />
           <Route
-  path="/users"
-  element={<ProtectedRoute role="admin"><UsersPage /></ProtectedRoute>}
-/>
-
-
+           path="/users"
+           element={<ProtectedRoute role="admin">
+            <PageLayout title="Gestion des Utilisateurs">
+               <UsersPage/>
+             </PageLayout>
+            </ProtectedRoute>
+          }
+          />
           <Route
             path="/candidats"
             element={
