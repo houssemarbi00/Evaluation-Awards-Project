@@ -11,9 +11,8 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # ❌ plus besoin de port 5432 exposé vers l'extérieur
-    # ports:
-    #   - "5432:5432"
+    # On ne l'expose pas à l'extérieur, seulement aux autres services
+    # pas de "ports" ici, c'est plus sécurisé
 
   backend:
     build:
@@ -25,11 +24,10 @@ services:
       - db
     environment:
       DATABASE_URL: postgres://postgres:ma9arouna@db:5432/postgres
-      # ⚠️ CORS en prod = ton domaine
+      # En prod tu pourras mettre uniquement ton domaine, pour l’instant ça va
       CORS_ORIGINS: https://evaluation.digital-awards.org
-    expose:
-      - "8000"
-    # ✅ sans --reload en prod
+    ports:
+      - "8000:8000"   # 🔥 accessible depuis le serveur sur localhost:8000
     command: >
       uvicorn main:app --host 0.0.0.0 --port 8000
 
@@ -39,11 +37,12 @@ services:
     restart: always
     depends_on:
       - backend
-    expose:
-      - "80"
+    ports:
+      - "5173:80"     # 🔥 accessible sur localhost:5173 (host) -> port 80 dans le conteneur
 
 volumes:
   postgres_data:
+
 
 
 
