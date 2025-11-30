@@ -1,2 +1,5 @@
 Git: supprimer git cmd powershell:
 # Remove-Item -Recurse -Force .git
+
+Git importer aà partir d'une autre branche que "main":
+# git pull origin docker
