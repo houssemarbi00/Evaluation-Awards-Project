@@ -3,3 +3,6 @@ Git: supprimer git cmd powershell:
 
 Git importer aà partir d'une autre branche que "main":
 # git pull origin docker
+
+En cas d'erreur voir logs du backend:
+# docker logs fastapi_backend --tail 50

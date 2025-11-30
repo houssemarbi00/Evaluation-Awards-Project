@@ -10,10 +10,15 @@ import models, database
 
 router = APIRouter(prefix="/scores", tags=["scores"])
 
-@router.post("/criteria-score")
-def add_criteria_score(request: schemas.CriteriaScoreCreate, 
-                       db: Session = Depends(get_db)):
+from fastapi import HTTPException, status
 
+@router.post("/criteria-score")
+def add_criteria_score(
+    request: schemas.CriteriaScoreCreate, 
+    db: Session = Depends(get_db)
+):
+
+    # 1) Vérifier si une note existe déjà pour ce jury / candidat / critère
     existing_score = db.query(models.CriteriaScore).filter(
         models.CriteriaScore.candidat_id == request.candidat_id,
         models.CriteriaScore.critere_id == request.critere_id,
@@ -21,12 +26,13 @@ def add_criteria_score(request: schemas.CriteriaScoreCreate,
     ).first()
 
     if existing_score:
-        existing_score.note = request.note
-        existing_score.commentaire = request.commentaire
-        db.commit()
-        db.refresh(existing_score)
-        return {"message": "Score updated", "score": existing_score}
+        # ❌ On interdit la modification
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vous avez déjà évalué ce candidat pour ce critère. La note ne peut plus être modifiée.",
+        )
 
+    # 2) Sinon, on crée la note
     new_score = models.CriteriaScore(
         candidat_id=request.candidat_id,
         jury_id=request.jury_id,
