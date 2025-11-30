@@ -1,3 +1,90 @@
+CREATE TABLE users (
+id SERIAL PRIMARY KEY, 
+nom VARCHAR(200) NOT NULL, 
+email VARCHAR(200) UNIQUE NOT NULL, 
+mot_de_passe VARCHAR(200) NOT NULL, 
+role VARCHAR(200) CHECK (role IN ('admin','jury')) NOT NULL,
+date_creation TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE candidats (
+id SERIAL PRIMARY KEY,
+nom VARCHAR(200) NOT NULL,
+prenom VARCHAR(200) NOT NULL,
+email VARCHAR(200) UNIQUE NOT NULL,
+projet TEXT,
+entreprise TEXT,
+date_creation TIMESTAMP DEFAULT NOW()
+);
+CREATE TABLE notes (
+id SERIAL PRIMARY KEY,
+
+jury_id INT REFERENCES users(id) ON DELETE CASCADE,
+candidat_id INT REFERENCES candidats(id) ON DELETE CASCADE,
+note NUMERIC(5,2) CHECK (note >= 0 AND note <= 20)
+);
+
+CREATE TABLE categories (
+id SERIAL PRIMARY KEY,
+nom VARCHAR(200) UNIQUE NOT NULL,
+description TEXT 
+);
+CREATE TABLE category_jury (
+    jury_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    categorie_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (jury_id, categorie_id)
+);
+CREATE TABLE candidate_category(
+candidat_id INTEGER REFERENCES candidats(id) ON DELETE CASCADE,
+categorie_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+PRIMARY KEY (candidat_id,categorie_id)
+);
+CREATE TABLE criteres(
+id SERIAL PRIMARY KEY,
+categorie_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+nom VARCHAR(200) NOT NULL,
+valeur_max NUMERIC NOT NULL CHECK (valeur_max >= 0),
+ordre_affichage INTEGER DEFAULT 0
+);
+CREATE TABLE criteria_scores(
+id SERIAL PRIMARY KEY,
+candidat_id INTEGER REFERENCES candidats(id) ON DELETE CASCADE,
+jury_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+categorie_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+critere_id INTEGER REFERENCES criteres(id) ON DELETE CASCADE,
+note NUMERIC(5,2) CHECK (note >= 0),
+commentaire TEXT,
+date_creation TIMESTAMP NOT NULL DEFAULT NOW(),
+UNIQUE (candidat_id, critere_id, jury_id)
+);
+CREATE TABLE jury_scores (
+id SERIAL PRIMARY KEY,
+candidat_id INTEGER REFERENCES candidats(id) ON DELETE CASCADE,
+jury_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+categorie_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+note_totale NUMERIC NOT NULL,
+date_creation TIMESTAMP DEFAULT NOW(),
+UNIQUE (candidat_id, jury_id, categorie_id)
+);
+CREATE TABLE final_scores(
+id SERIAL PRIMARY KEY,
+candidat_id INTEGER REFERENCES candidats(id) ON DELETE CASCADE,
+categorie_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+note_finale NUMERIC  NOT NULL,
+nb_jury INT NOT NULL DEFAULT 0,
+updated_at TIMESTAMP DEFAULT NOW(),
+UNIQUE (candidat_id, categorie_id)
+);
+
+ALTER TABLE criteria_scores
+ADD CONSTRAINT unique_score_per_jury_candidate_criterion
+UNIQUE (candidat_id, critere_id, jury_id);
+
+CREATE INDEX idx_criteria_scores_candidat_categ ON criteria_scores (candidat_id, categorie_id);
+CREATE INDEX idx_criteria_scores_jury ON criteria_scores (jury_id);
+CREATE INDEX idx_jury_scores_candidat_categ ON jury_scores (candidat_id, categorie_id);
+CREATE INDEX idx_final_scores_categorie ON final_scores (categorie_id);
+
 CREATE OR REPLACE FUNCTION fn_validate_criteria_score() RETURNS TRIGGER AS $$
 DECLARE
     v_valeur_max INTEGER;

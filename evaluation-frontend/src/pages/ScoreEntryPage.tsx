@@ -127,6 +127,11 @@ export default function ScoreEntryPage() {
       showMessage("Note enregistrée ✔️");
     } catch (err: any) {
       showMessage(err?.response?.data?.detail || "Erreur d’enregistrement", "error");
+      if (err.response?.status === 400) {
+    alert(err.response.data.detail || "Vous avez déjà évalué ce candidat pour ce critère.");
+  } else {
+    alert("Une erreur est survenue lors de l'enregistrement de la note.");
+  }
     } finally {
       setLoading(false);
     }
